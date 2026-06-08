@@ -7,7 +7,7 @@ from loguru import logger
 load_dotenv()
 
 # Paths
-PROJ_ROOT = Path(__file__).resolve().parents[1]
+PROJ_ROOT = Path(__file__).resolve().parents[2]
 logger.info(f"PROJ_ROOT path is: {PROJ_ROOT}")
 
 DATA_DIR = PROJ_ROOT / "data"
@@ -20,3 +20,17 @@ MODELS_DIR = PROJ_ROOT / "models"
 
 REPORTS_DIR = PROJ_ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
+
+AGE = "Age"
+SEX = "Sex"
+CHEST_PAIN_TYPE = "ChestPainType"
+RESTING_BP = "RestingBP"
+CHOLESTEROL = "Cholesterol"
+FASTING_BS = "FastingBS"
+RESTING_ECG = "RestingECG"
+MAX_HR = "MaxHR"
+EXERCISE_ANGINA = "ExerciseAngina"
+OLDPEAK = "Oldpeak"
+ST_SLOPE = "ST_Slope"
+HEART_DISEASE = "HeartDisease"
+

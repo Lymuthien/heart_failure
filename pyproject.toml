@@ -16,10 +16,16 @@ classifiers = [
     
 ]
 dependencies = [
+    "ipython>=9.14.1",
     "loguru",
+    "matplotlib>=3.10.9",
+    "numpy>=2.4.6",
+    "pandas>=3.0.3",
     "pip",
+    "plotly>=6.8.0",
     "python-dotenv",
     "ruff",
+    "seaborn>=0.13.2",
     "tqdm",
     "typer",
 ]
