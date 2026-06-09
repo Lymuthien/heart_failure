@@ -47,7 +47,9 @@ def plot_cat_target_distribution(
     _plot_cat_grid(df, plot_func, n_cols, figsize_factor)
 
 
-def plot_corr_matrix(corr_df: pd.DataFrame, max_abs: float = 1, width: int = 500, height: int = 500):
+def plot_corr_matrix(
+    corr_df: pd.DataFrame, max_abs: float = 1, width: int = 500, height: int = 500
+):
     fig = px.imshow(
         corr_df,
         labels=dict(x="feature", y="feature", color="corr"),
