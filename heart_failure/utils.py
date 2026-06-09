@@ -9,3 +9,15 @@ def target_pct_table_by_cat(df: pd.DataFrame, target: str) -> pd.DataFrame:
     )
 
     return pct_table
+
+
+def cat_pct_distr_by_group(df: pd.DataFrame, group) -> pd.DataFrame:
+    tables = []
+    cat_cols = df.select_dtypes(include=["object", "category"]).columns
+
+    for col in cat_cols:
+        ct = pd.crosstab(group, df[col], normalize="index")
+        ct.columns = pd.MultiIndex.from_product([[col], ct.columns])
+        tables.append(ct)
+
+    return pd.concat(tables, axis=1)
