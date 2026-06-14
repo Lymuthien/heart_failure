@@ -51,16 +51,13 @@ class TargetEncoderByBins(BaseEstimator, TransformerMixin):
             bin_labels = pd.Series(bins, index=X.index)
 
             for cat_col in self.cat_cols:
-                cross_feature = pd.DataFrame(
-                    {"cross": (X[cat_col].astype(str) + "__" + bin_labels.astype(str))}
-                )
+                cross = X[cat_col].astype(str) + "__" + bin_labels.astype(str)
 
                 encoder = self.encoders_[(bin_col, cat_col)]
                 if fit:
-                    encoded = encoder.fit_transform(cross_feature, y)
-                    self.encoders_[(bin_col, cat_col)] = encoder
+                    encoded = encoder.fit_transform(cross.to_frame("cross"), y)
                 else:
-                    encoded = encoder.transform(cross_feature)
+                    encoded = encoder.transform(cross.to_frame("cross"))
 
                 X[f"{bin_col}_{cat_col}_te"] = encoded.ravel()
 
@@ -86,6 +83,46 @@ class TargetEncoderByBins(BaseEstimator, TransformerMixin):
         self.binners_ = {}
         self.encoders_ = self._init_encoders()
 
+        return self._encode(X, y=y, fit=True)
+
+
+class CrossTargetEncoder(BaseEstimator, TransformerMixin):
+    def __init__(self, cat_cols_groups: tuple[list[str], list[str]], cv=None):
+        self.cat_cols_groups = cat_cols_groups
+        self.cv = cv
+
+    def _encode(self, X, y=None, fit=False):
+        X = X.copy()
+
+        for left_col, right_col in product(*self.cat_cols_groups):
+            cross = X[left_col].astype(str) + "__" + X[right_col].astype(str)
+
+            encoder = self.encoders_[(left_col, right_col)]
+            if fit:
+                encoded = encoder.fit_transform(cross.to_frame("cross"), y)
+            else:
+                encoded = encoder.transform(cross.to_frame("cross"))
+
+            X[f"{left_col}_{right_col}_te"] = encoded.ravel()
+
+        return X
+
+    def _init_encoders(self):
+        return {
+            (left_col, right_col): TargetEncoder(cv=self.cv)
+            for left_col, right_col in product(*self.cat_cols_groups)
+        }
+
+    def fit(self, X, y):
+        self.encoders_ = self._init_encoders()
+        self._encode(X, y=y, fit=True)
+        return self
+
+    def transform(self, X):
+        return self._encode(X, fit=False)
+
+    def fit_transform(self, X, y):
+        self.encoders_ = self._init_encoders()
         return self._encode(X, y=y, fit=True)
 
 
