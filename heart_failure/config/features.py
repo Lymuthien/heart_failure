@@ -8,15 +8,34 @@ from heart_failure.config.config import (
     MAX_HR,
     FASTING_BS,
     EXERCISE_ANGINA,
+    OLDPEAK,
+    RESTING_BP,
 )
+
+CONJUNCTIVE_RULES = "conjunctive_rules"
+RULE_CONDITIONS = {
+    "Oldpeak>=2.5": lambda X: X[OLDPEAK] >= 2.5,
+    "MaxHR<=160": lambda X: X[MAX_HR] <= 160,
+    "MaxHR<=140": lambda X: X[MAX_HR] <= 140,
+    "Age>=50": lambda X: X[AGE] >= 50,
+    "Age>=60": lambda X: X[AGE] >= 60,
+    "ChestPain=ASY": lambda X: X[CHEST_PAIN_TYPE] == "ASY",
+    "ExerciseAngina=Y": lambda X: X[EXERCISE_ANGINA] == "Y",
+    "FastingBS=1": lambda X: X[FASTING_BS] == 1,
+    "ST_Slope=Down": lambda X: X[ST_SLOPE] == "Down",
+    "ST_Slope=Flat": lambda X: X[ST_SLOPE] == "Flat",
+}
+CONJ_MIN_MASK_COUNT = 50
+CONJ_MIN_TARGET_RATE = 0.9
 
 TEST_SIZE = 0.2
 RANDOM_STATE = 42
 TE_CV = 5
 TE_FEATURES = [RESTING_ECG, CHEST_PAIN_TYPE, ST_SLOPE]
-BINARIZED_FEATURES = [AGE]
+BINARIZED_FEATURES = [AGE, CHOLESTEROL, MAX_HR]
 BINARY_CAT_FEATURES = [SEX, FASTING_BS, EXERCISE_ANGINA]
 Z_SCORED_FEATURES = [CHOLESTEROL, MAX_HR]
 OLDPEAK_TE_FEATURES = [ST_SLOPE, EXERCISE_ANGINA, CHEST_PAIN_TYPE]
 MAX_HR_TE_FEATURES = [RESTING_ECG]
+SEX_TE_FEATURES = [AGE, CHOLESTEROL, RESTING_BP]
 FASTING_BS_TE_FEATURES = [ST_SLOPE, CHEST_PAIN_TYPE, EXERCISE_ANGINA]
