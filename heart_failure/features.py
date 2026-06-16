@@ -4,8 +4,25 @@ import pandas as pd
 from statsmodels.stats.outliers_influence import variance_inflation_factor as vif
 from itertools import product, combinations
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.preprocessing import TargetEncoder, KBinsDiscretizer
-from heart_failure.config.features import CONJUNCTIVE_RULES
+from sklearn.preprocessing import TargetEncoder, KBinsDiscretizer, OrdinalEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+
+from heart_failure.config.config import SEX, AGE, MAX_HR, OLDPEAK, FASTING_BS
+from heart_failure.config.features import (
+    TE_FEATURES,
+    BINARIZED_FEATURES,
+    BINARY_CAT_FEATURES,
+    Z_SCORED_FEATURES,
+    OLDPEAK_TE_FEATURES,
+    MAX_HR_TE_FEATURES,
+    FASTING_BS_TE_FEATURES,
+    RULE_CONDITIONS,
+    CONJ_MIN_MASK_COUNT,
+    CONJ_MIN_TARGET_RATE,
+    SEX_TE_FEATURES,
+    CONJUNCTIVE_RULES
+)
 
 
 class GroupZScore(BaseEstimator, TransformerMixin):
@@ -131,7 +148,7 @@ class CrossTargetEncoder(BaseEstimator, TransformerMixin):
         return self._encode(X, y=y, fit=True)
 
 
-class ConjRuleAggregator(BaseEstimator, TransformerMixin):
+class ConjRuleFeature(BaseEstimator, TransformerMixin):
     def __init__(
         self, conditions: dict, min_count: int = 50, min_target_rate: float = 0.9
     ):
@@ -173,13 +190,43 @@ class ConjRuleAggregator(BaseEstimator, TransformerMixin):
         return X
 
 
-def add_features_ratio(
-    df: pd.DataFrame, numerator: str, denominator: str
-) -> pd.DataFrame:
-    df = df.copy()
+class RatioFeature(BaseEstimator, TransformerMixin):
+    def __init__(self, numerator: str, denominator: str):
+        self.numerator = numerator
+        self.denominator = denominator
 
-    df[f"{numerator}_{denominator}_ratio"] = df[numerator] / df[denominator]
-    return df
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        X = X.copy()
+        X[f"{self.numerator}_{self.denominator}_ratio"] = (
+            X[self.numerator] / X[self.denominator]
+        )
+        return X
+
+
+def get_fe_pipeline(cv) -> Pipeline:
+    binarizer = KBinsDiscretizer(n_bins=10, encode="ordinal")
+    preprocessor = ColumnTransformer([
+        ("target_encoder", TargetEncoder(cv=cv), TE_FEATURES),
+        ("binarizer", binarizer, BINARIZED_FEATURES),
+        ("binary_encoder", OrdinalEncoder(), BINARY_CAT_FEATURES)
+    ], remainder="passthrough")
+    preprocessor.set_output(transform="pandas")
+
+    pipeline = Pipeline([
+        ("age_maxhr_ratio", RatioFeature(AGE, MAX_HR)),
+        ("rule_aggregator", ConjRuleFeature(RULE_CONDITIONS, CONJ_MIN_MASK_COUNT, CONJ_MIN_TARGET_RATE)),
+        ("group_zscore", GroupZScore([AGE, SEX], Z_SCORED_FEATURES)),
+        ("oldpeak_te", TargetEncoderByBins([OLDPEAK], OLDPEAK_TE_FEATURES, n_bins=4, cv=cv)),
+        ("te_by_max_hr", TargetEncoderByBins([MAX_HR], MAX_HR_TE_FEATURES, n_bins=4, cv=cv)),
+        ("sex_te", TargetEncoderByBins(SEX_TE_FEATURES, [SEX], n_bins=5, cv=cv)),
+        ("fasting_bs_te", CrossTargetEncoder(([FASTING_BS], FASTING_BS_TE_FEATURES), cv=cv)),
+        ("preprocessor", preprocessor)
+    ])
+
+    return pipeline
 
 
 def select_by_vif(
