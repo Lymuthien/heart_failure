@@ -1,0 +1,4 @@
+CV_SPLITS = 5
+LR_N_TRIALS = 50
+LR_SCORING = "average_precision"
+F_BETA_THRESHOLD = 1.1

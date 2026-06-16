@@ -13,7 +13,7 @@ from heart_failure.config.config import (
 )
 
 CONJUNCTIVE_RULES = "conjunctive_rules"
-RULE_CONDITIONS = {
+CONJ_RULES = {
     "Oldpeak>=2.5": lambda X: X[OLDPEAK] >= 2.5,
     "MaxHR<=160": lambda X: X[MAX_HR] <= 160,
     "MaxHR<=140": lambda X: X[MAX_HR] <= 140,
@@ -29,6 +29,7 @@ CONJ_MIN_MASK_COUNT = 50
 CONJ_MIN_TARGET_RATE = 0.9
 
 TEST_SIZE = 0.2
+VAL_SIZE = 0.1
 RANDOM_STATE = 42
 TE_CV = 5
 TARGET_CORR_THRESHOLD = 0.2

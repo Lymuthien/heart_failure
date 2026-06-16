@@ -7,6 +7,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import TargetEncoder, KBinsDiscretizer, OrdinalEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
+from sklearn.model_selection import StratifiedKFold
 
 from heart_failure.config.config import SEX, AGE, MAX_HR, OLDPEAK, FASTING_BS
 from heart_failure.config.features import (
@@ -17,11 +18,13 @@ from heart_failure.config.features import (
     OLDPEAK_TE_FEATURES,
     MAX_HR_TE_FEATURES,
     FASTING_BS_TE_FEATURES,
-    RULE_CONDITIONS,
+    CONJ_RULES,
     CONJ_MIN_MASK_COUNT,
     CONJ_MIN_TARGET_RATE,
     SEX_TE_FEATURES,
-    CONJUNCTIVE_RULES
+    CONJUNCTIVE_RULES,
+    TE_CV,
+    RANDOM_STATE,
 )
 
 
@@ -44,7 +47,7 @@ class GroupZScore(BaseEstimator, TransformerMixin):
 
         for col in self.value_cols:
             z = (tmp[col] - tmp[f"{col}_mean"]) / tmp[f"{col}_std"]
-            X[f"{col}_z"] = z.fillna(0)
+            X[f"{col}_z"] = z.replace([np.inf, -np.inf], 0).fillna(0)
 
         return X
 
@@ -206,7 +209,10 @@ class RatioFeature(BaseEstimator, TransformerMixin):
         return X
 
 
-def get_fe_pipeline(cv) -> Pipeline:
+def get_fe_pipeline(cv=None) -> Pipeline:
+    if cv is None:
+        cv = StratifiedKFold(n_splits=TE_CV, shuffle=True, random_state=RANDOM_STATE)
+
     binarizer = KBinsDiscretizer(n_bins=10, encode="ordinal")
     preprocessor = ColumnTransformer([
         ("target_encoder", TargetEncoder(cv=cv), TE_FEATURES),
@@ -217,7 +223,7 @@ def get_fe_pipeline(cv) -> Pipeline:
 
     pipeline = Pipeline([
         ("age_maxhr_ratio", RatioFeature(AGE, MAX_HR)),
-        ("rule_aggregator", ConjRuleFeature(RULE_CONDITIONS, CONJ_MIN_MASK_COUNT, CONJ_MIN_TARGET_RATE)),
+        ("rule_aggregator", ConjRuleFeature(CONJ_RULES, CONJ_MIN_MASK_COUNT, CONJ_MIN_TARGET_RATE)),
         ("group_zscore", GroupZScore([AGE, SEX], Z_SCORED_FEATURES)),
         ("oldpeak_te", TargetEncoderByBins([OLDPEAK], OLDPEAK_TE_FEATURES, n_bins=4, cv=cv)),
         ("te_by_max_hr", TargetEncoderByBins([MAX_HR], MAX_HR_TE_FEATURES, n_bins=4, cv=cv)),
