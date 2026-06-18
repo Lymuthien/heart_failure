@@ -48,7 +48,7 @@ def plot_cat_target_distribution(
 
 
 def plot_corr_matrix(
-    corr_df: pd.DataFrame, max_abs: float = 1, width: int = 500, height: int = 500
+    corr_df: pd.DataFrame, max_abs: float = 1, width=500, height=500, fontsize=20
 ):
     fig = px.imshow(
         corr_df,
@@ -59,7 +59,7 @@ def plot_corr_matrix(
         zmin=-max_abs,
         zmax=max_abs,
     )
-    fig.update_layout(width=width, height=height)
+    fig.update_layout(width=width, height=height, font=dict(size=fontsize))
     fig.show()
 
 

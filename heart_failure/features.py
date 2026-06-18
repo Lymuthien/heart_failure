@@ -153,11 +153,16 @@ class CrossTargetEncoder(BaseEstimator, TransformerMixin):
 
 class ConjRuleFeature(BaseEstimator, TransformerMixin):
     def __init__(
-        self, conditions: dict, min_count: int = 50, min_target_rate: float = 0.9
+        self,
+        conditions: dict,
+        min_count: int = 50,
+        min_target_rate: float = 0.9,
+        combine_rules: bool = True,
     ):
         self.conditions = conditions
         self.min_count = min_count
         self.min_target_rate = min_target_rate
+        self.combine_rules = combine_rules
 
     def fit(self, X: pd.DataFrame, y):
         cond_values = {name: rule(X) for name, rule in self.conditions.items()}
@@ -181,14 +186,19 @@ class ConjRuleFeature(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X: pd.DataFrame):
+        X = X.copy()
         cond_values = {name: rule(X) for name, rule in self.conditions.items()}
         feature = np.zeros(len(X), dtype=int)
 
         for left_name, right_name in self.selected_rules_:
-            feature |= (cond_values[left_name] & cond_values[right_name]).astype(int)
+            values = (cond_values[left_name] & cond_values[right_name]).astype(int)
+            if self.combine_rules:
+                feature |= values
+            else:
+                X[f"{left_name} & {right_name}"] = values
 
-        X = X.copy()
-        X[CONJUNCTIVE_RULES] = feature
+        if self.combine_rules:
+            X[CONJUNCTIVE_RULES] = feature
 
         return X
 
@@ -209,28 +219,50 @@ class RatioFeature(BaseEstimator, TransformerMixin):
         return X
 
 
-def get_fe_pipeline(cv=None) -> Pipeline:
+def get_preprocessor(cv):
+    binarizer = KBinsDiscretizer(n_bins=10, encode="ordinal")
+    preprocessor = ColumnTransformer(
+        [
+            ("target_encoder", TargetEncoder(cv=cv), TE_FEATURES),
+            ("binarizer", binarizer, BINARIZED_FEATURES),
+            ("binary_encoder", OrdinalEncoder(), BINARY_CAT_FEATURES),
+        ],
+        remainder="passthrough",
+    )
+    preprocessor.set_output(transform="pandas")
+    return preprocessor
+
+
+def get_fe_pipeline(cv=None, combine_rules=True) -> Pipeline:
     if cv is None:
         cv = StratifiedKFold(n_splits=TE_CV, shuffle=True, random_state=RANDOM_STATE)
 
-    binarizer = KBinsDiscretizer(n_bins=10, encode="ordinal")
-    preprocessor = ColumnTransformer([
-        ("target_encoder", TargetEncoder(cv=cv), TE_FEATURES),
-        ("binarizer", binarizer, BINARIZED_FEATURES),
-        ("binary_encoder", OrdinalEncoder(), BINARY_CAT_FEATURES)
-    ], remainder="passthrough")
-    preprocessor.set_output(transform="pandas")
-
-    pipeline = Pipeline([
-        ("age_maxhr_ratio", RatioFeature(AGE, MAX_HR)),
-        ("rule_aggregator", ConjRuleFeature(CONJ_RULES, CONJ_MIN_MASK_COUNT, CONJ_MIN_TARGET_RATE)),
-        ("group_zscore", GroupZScore([AGE, SEX], Z_SCORED_FEATURES)),
-        ("oldpeak_te", TargetEncoderByBins([OLDPEAK], OLDPEAK_TE_FEATURES, n_bins=4, cv=cv)),
-        ("te_by_max_hr", TargetEncoderByBins([MAX_HR], MAX_HR_TE_FEATURES, n_bins=4, cv=cv)),
-        ("sex_te", TargetEncoderByBins(SEX_TE_FEATURES, [SEX], n_bins=5, cv=cv)),
-        ("fasting_bs_te", CrossTargetEncoder(([FASTING_BS], FASTING_BS_TE_FEATURES), cv=cv)),
-        ("preprocessor", preprocessor)
-    ])
+    pipeline = Pipeline(
+        [
+            ("age_maxhr_ratio", RatioFeature(AGE, MAX_HR)),
+            (
+                "rule_aggregator",
+                ConjRuleFeature(
+                    CONJ_RULES, CONJ_MIN_MASK_COUNT, CONJ_MIN_TARGET_RATE, combine_rules
+                ),
+            ),
+            ("group_zscore", GroupZScore([AGE, SEX], Z_SCORED_FEATURES)),
+            (
+                "oldpeak_te",
+                TargetEncoderByBins([OLDPEAK], OLDPEAK_TE_FEATURES, n_bins=4, cv=cv),
+            ),
+            (
+                "te_by_max_hr",
+                TargetEncoderByBins([MAX_HR], MAX_HR_TE_FEATURES, n_bins=4, cv=cv),
+            ),
+            ("sex_te", TargetEncoderByBins(SEX_TE_FEATURES, [SEX], n_bins=5, cv=cv)),
+            (
+                "fasting_bs_te",
+                CrossTargetEncoder(([FASTING_BS], FASTING_BS_TE_FEATURES), cv=cv),
+            ),
+            ("preprocessor", get_preprocessor(cv)),
+        ]
+    )
 
     return pipeline
 

@@ -62,7 +62,6 @@ def build_dt_pipeline(
         [
             ("feature_engineering", fe_pipeline),
             ("column_selector", ColumnSelector(rem_columns)),
-            ("scaler", StandardScaler()),
             ("model", DecisionTreeClassifier(random_state=random_state)),
         ]
     )

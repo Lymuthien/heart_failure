@@ -12,6 +12,7 @@ def optuna_search(
     scoring="accuracy",
     n_trials: int = 50,
     n_splits: int = 5,
+    n_jobs: int = -1,
     random_state: int = 42,
     timeout=None,
     optimize_direction="maximize",
@@ -32,7 +33,7 @@ def optuna_search(
 
     sampler = TPESampler(seed=random_state)
     study = optuna.create_study(direction=optimize_direction, sampler=sampler)
-    study.optimize(objective, n_trials=n_trials, timeout=timeout)
+    study.optimize(objective, n_trials=n_trials, timeout=timeout, n_jobs=n_jobs)
 
     best_pipeline = model_builder(random_state=random_state, **kwargs)
     best_pipeline.set_params(**study.best_params)
