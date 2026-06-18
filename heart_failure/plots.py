@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import matplotlib.pyplot as plt
-import seaborn as sns
+from sklearn.metrics import precision_recall_curve
 
 from typing import Callable
 
@@ -61,3 +61,14 @@ def plot_corr_matrix(
     )
     fig.update_layout(width=width, height=height)
     fig.show()
+
+
+def plot_pr_curve(y_true, y_proba):
+    precision, recall, thresholds = precision_recall_curve(y_true, y_proba)
+
+    plt.plot(recall, precision)
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.title("Precision–Recall Curve")
+    plt.grid(True)
+    plt.show()

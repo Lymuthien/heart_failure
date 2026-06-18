@@ -14,9 +14,9 @@ from heart_failure.config.config import (
 
 CONJUNCTIVE_RULES = "conjunctive_rules"
 CONJ_RULES = {
-    "Oldpeak>=2.5": lambda X: X[OLDPEAK] >= 2.5,
+    "Oldpeak>=2": lambda X: X[OLDPEAK] >= 2,
     "MaxHR<=160": lambda X: X[MAX_HR] <= 160,
-    "MaxHR<=140": lambda X: X[MAX_HR] <= 140,
+    "MaxHR<=150": lambda X: X[MAX_HR] <= 150,
     "Age>=50": lambda X: X[AGE] >= 50,
     "Age>=60": lambda X: X[AGE] >= 60,
     "ChestPain=ASY": lambda X: X[CHEST_PAIN_TYPE] == "ASY",
@@ -26,10 +26,10 @@ CONJ_RULES = {
     "ST_Slope=Flat": lambda X: X[ST_SLOPE] == "Flat",
 }
 CONJ_MIN_MASK_COUNT = 50
-CONJ_MIN_TARGET_RATE = 0.9
+CONJ_MIN_TARGET_RATE = 0.85
 
 TEST_SIZE = 0.2
-VAL_SIZE = 0.1
+VAL_SIZE = 0.12
 RANDOM_STATE = 42
 TE_CV = 5
 TARGET_CORR_THRESHOLD = 0.2

@@ -20,6 +20,17 @@ def find_best_threshold(y_true, y_proba, beta=1) -> float:
     return round(thresholds[best_idx], 3)
 
 
+def find_max_recall_by_pr(y_true, y_proba) -> np.float64:
+    precision, recall, thresholds = precision_recall_curve(y_true, y_proba)
+
+    max_recall = np.max(recall[:-1])
+    candidates = np.where(recall[:-1] == max_recall)[0]
+    best_idx = candidates[np.argmax(precision[candidates])]
+    best_threshold = thresholds[best_idx]
+
+    return best_threshold
+
+
 def get_metrics(y_true, y_pred, y_proba=None) -> pd.Series:
     metrics = {
         "precision": precision_score(y_true, y_pred),
