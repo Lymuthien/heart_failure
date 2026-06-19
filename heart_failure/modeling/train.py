@@ -2,6 +2,16 @@ import optuna
 import pandas as pd
 from optuna.samplers import TPESampler
 from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.metrics import average_precision_score
+
+
+def ap_scorer(estimator, X, y):
+    proba = estimator.predict_proba(X)
+
+    if proba.ndim == 2:
+        proba = proba[:, 1]
+
+    return average_precision_score(y, proba)
 
 
 def optuna_search(
@@ -9,7 +19,7 @@ def optuna_search(
     y: pd.Series,
     model_builder: callable,
     param_space: callable,
-    scoring="accuracy",
+    scoring=ap_scorer,
     n_trials: int = 50,
     n_splits: int = 5,
     n_jobs: int = -1,
@@ -71,6 +81,21 @@ def dt_space(trial):
         ),
         "splitter": "best",
         "criterion": "gini",
+    }
+
+    return params
+
+
+def catboost_space(trial):
+    params = {
+        "iterations": trial.suggest_int("model__iterations", 200, 800),
+        "learning_rate": trial.suggest_float("model__learning_rate", 1e-3, 0.2, log=True),
+        "depth": trial.suggest_int("model__depth", 2, 5),
+        "l2_leaf_reg": trial.suggest_float("model__l2_leaf_reg", 1e-4, 10, log=True),
+        "min_data_in_leaf": trial.suggest_int("model__min_data_in_leaf", 5, 50),
+        "subsample": trial.suggest_float("model__subsample", 0.7, 1),
+        "rsm": trial.suggest_float("model__rsm", 0.5, 1),
+        "verbose": 0,
     }
 
     return params
