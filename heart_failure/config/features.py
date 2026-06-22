@@ -14,16 +14,16 @@ from heart_failure.config.config import (
 
 CONJUNCTIVE_RULES = "conjunctive_rules"
 CONJ_RULES = {
-    "Oldpeak>=2": lambda X: X[OLDPEAK] >= 2,
-    "MaxHR<=160": lambda X: X[MAX_HR] <= 160,
-    "MaxHR<=150": lambda X: X[MAX_HR] <= 150,
-    "Age>=50": lambda X: X[AGE] >= 50,
-    "Age>=60": lambda X: X[AGE] >= 60,
-    "ChestPain=ASY": lambda X: X[CHEST_PAIN_TYPE] == "ASY",
-    "ExerciseAngina=Y": lambda X: X[EXERCISE_ANGINA] == "Y",
-    "FastingBS=1": lambda X: X[FASTING_BS] == 1,
-    "ST_Slope=Down": lambda X: X[ST_SLOPE] == "Down",
-    "ST_Slope=Flat": lambda X: X[ST_SLOPE] == "Flat",
+    "Oldpeak ge 2": lambda X: X[OLDPEAK] >= 2,
+    "MaxHR le 160": lambda X: X[MAX_HR] <= 160,
+    "MaxHR le 150": lambda X: X[MAX_HR] <= 150,
+    "Age ge 50": lambda X: X[AGE] >= 50,
+    "Age ge 60": lambda X: X[AGE] >= 60,
+    "ChestPain eq ASY": lambda X: X[CHEST_PAIN_TYPE] == "ASY",
+    "ExerciseAngina eq Y": lambda X: X[EXERCISE_ANGINA] == "Y",
+    "FastingBS eq 1": lambda X: X[FASTING_BS] == 1,
+    "ST_Slope eq Down": lambda X: X[ST_SLOPE] == "Down",
+    "ST_Slope eq Flat": lambda X: X[ST_SLOPE] == "Flat",
 }
 CONJ_MIN_MASK_COUNT = 50
 CONJ_MIN_TARGET_RATE = 0.85

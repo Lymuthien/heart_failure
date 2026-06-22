@@ -99,3 +99,20 @@ def catboost_space(trial):
     }
 
     return params
+
+
+def xgboost_space(trial):
+    params = {
+        "n_estimators": trial.suggest_int("model__n_estimators", 200, 800),
+        "learning_rate": trial.suggest_float(
+            "model__learning_rate", 1e-3, 0.1, log=True
+        ),
+        "gamma": trial.suggest_float("model__gamma", 0, 2),
+        "max_depth": trial.suggest_int("model__max_depth", 2, 5),
+        "reg_lambda": trial.suggest_float("model__reg_lambda", 1e-4, 10, log=True),
+        "reg_alpha": trial.suggest_float("model__reg_alpha", 1e-4, 1, log=True),
+        "subsample": trial.suggest_float("model__subsample", 0.7, 1),
+        "verbose": 0,
+    }
+
+    return params

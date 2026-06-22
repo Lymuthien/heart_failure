@@ -7,6 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from catboost import CatBoostClassifier
+from xgboost import XGBClassifier
 
 from heart_failure.features import ConjRuleFeature
 from heart_failure.config.features import CONJUNCTIVE_RULES
@@ -127,6 +128,20 @@ def build_catboost_pipeline(random_state: int = 42, cat_features=None) -> Pipeli
                     eval_metric=CB_EVAL_METRIC,
                 ),
             ),
+        ]
+    )
+
+    return pipeline
+
+
+def build_xgboost_pipeline(
+    fe_pipeline: Pipeline, rem_columns: list[str] = None, random_state: int = 42
+) -> Pipeline:
+    pipeline = Pipeline(
+        [
+            ("feature_engineering", fe_pipeline),
+            ("column_selector", ColumnSelector(rem_columns)),
+            ("model", XGBClassifier(random_state=random_state)),
         ]
     )
 
