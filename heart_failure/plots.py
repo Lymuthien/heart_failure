@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import plotly.express as px
 import matplotlib.pyplot as plt
 from sklearn.metrics import precision_recall_curve
@@ -48,7 +49,7 @@ def plot_cat_target_distribution(
 
 
 def plot_corr_matrix(
-    corr_df: pd.DataFrame, max_abs: float = 1, width=500, height=500, fontsize=20
+    corr_df: pd.DataFrame, max_abs: float = 1, width=500, height=500, fontsize=12
 ):
     fig = px.imshow(
         corr_df,
@@ -71,4 +72,16 @@ def plot_pr_curve(y_true, y_proba):
     plt.ylabel("Precision")
     plt.title("Precision–Recall Curve")
     plt.grid(True)
+    plt.show()
+
+
+def kdeplot_features_by_target(df: pd.DataFrame, cols: list[str], target: str):
+    fig, axes = plt.subplots(1, len(cols), figsize=(15, 4))
+
+    for ax, f in zip(axes, cols):
+        sns.kdeplot(
+            df, x=f, hue=target, fill=True, common_norm=False, alpha=0.3, ax=ax
+        )
+
+    plt.tight_layout()
     plt.show()
