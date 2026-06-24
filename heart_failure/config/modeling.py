@@ -4,3 +4,4 @@ CV_SCORING = "average_precision"
 F_BETA_THRESHOLD = 1.5
 
 CB_EVAL_METRIC = "PRAUC"
+MIN_RECALL = 0.95

@@ -5,7 +5,6 @@ import optuna
 from sklearn.metrics import (
     precision_score,
     recall_score,
-    fbeta_score,
     average_precision_score,
     precision_recall_curve,
     confusion_matrix
@@ -22,18 +21,6 @@ def find_best_threshold(y_true, y_proba, min_recall: float) -> float:
     valid_indices = np.where(mask)[0]
 
     return round(thresholds[valid_indices[best_idx]], 3)
-
-
-def find_max_recall_by_pr(y_true, y_proba, top: int = 1) -> np.float64:
-    precision, recall, thresholds = precision_recall_curve(y_true, y_proba)
-
-    unique_recall = np.unique(recall[:-1])
-    max_recall = np.sort(unique_recall)[::-1][top - 1]
-    candidates = np.where(recall[:-1] == max_recall)[0]
-    best_idx = candidates[np.argmax(precision[candidates])]
-    best_threshold = thresholds[best_idx]
-
-    return best_threshold
 
 
 def get_metrics(y_true, y_pred, y_proba=None) -> pd.Series:
