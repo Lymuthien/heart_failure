@@ -7,17 +7,21 @@ from sklearn.metrics import (
     recall_score,
     fbeta_score,
     average_precision_score,
-    precision_recall_curve
+    precision_recall_curve,
+    confusion_matrix
 )
 
 
-def find_best_threshold(y_true, y_proba, beta=1) -> float:
+def find_best_threshold(y_true, y_proba, min_recall: float) -> float:
     precision, recall, thresholds = precision_recall_curve(y_true, y_proba)
+    precision = precision[:-1]
+    recall = recall[:-1]
 
-    f = (1 + beta**2) * precision * recall / (beta**2 * precision + recall + 1e-12)
-    best_idx = f.argmax()
+    mask = recall >= min_recall
+    best_idx = np.argmax(precision[mask])
+    valid_indices = np.where(mask)[0]
 
-    return round(thresholds[best_idx], 3)
+    return round(thresholds[valid_indices[best_idx]], 3)
 
 
 def find_max_recall_by_pr(y_true, y_proba, top: int = 1) -> np.float64:
@@ -33,10 +37,12 @@ def find_max_recall_by_pr(y_true, y_proba, top: int = 1) -> np.float64:
 
 
 def get_metrics(y_true, y_pred, y_proba=None) -> pd.Series:
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+
     metrics = {
         "precision": precision_score(y_true, y_pred),
         "recall": recall_score(y_true, y_pred),
-        "f2_score": fbeta_score(y_true, y_pred, beta=2),
+        "fpr": fp / (fp + tn),
     }
     if y_proba is not None:
         metrics["pr_auc"] = average_precision_score(y_true, y_proba)
