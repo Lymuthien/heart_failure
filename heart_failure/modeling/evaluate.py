@@ -20,7 +20,7 @@ def find_best_threshold(y_true, y_proba, min_recall: float) -> float:
     best_idx = np.argmax(precision[mask])
     valid_indices = np.where(mask)[0]
 
-    return round(thresholds[valid_indices[best_idx]], 3)
+    return thresholds[valid_indices[best_idx]]
 
 
 def get_metrics(y_true, y_pred, y_proba=None) -> pd.Series:
