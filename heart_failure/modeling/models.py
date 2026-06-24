@@ -141,13 +141,20 @@ def build_catboost_pipeline(
 
 
 def build_xgboost_pipeline(
-    fe_pipeline: Pipeline, rem_columns: list[str] = None, random_state: int = 42
+    fe_pipeline: Pipeline,
+    rem_columns: list[str] = None,
+    random_state: int = 42,
+    cat_features: bool = False,
 ) -> Pipeline:
+    if cat_features:
+        params = {"enable_categorical": True, "tree_method": "hist"}
+    else:
+        params = {}
     pipeline = Pipeline(
         [
             ("feature_engineering", fe_pipeline),
             ("column_selector", ColumnSelector(rem_columns)),
-            ("model", XGBClassifier(random_state=random_state)),
+            ("model", XGBClassifier(random_state=random_state, **params)),
         ]
     )
 
