@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.utils.validation import check_is_fitted
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, FunctionTransformer
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from catboost import CatBoostClassifier
@@ -117,9 +117,15 @@ def build_dt_pipeline(
     return pipeline
 
 
-def build_catboost_pipeline(random_state: int = 42, cat_features=None) -> Pipeline:
+def build_catboost_pipeline(
+    random_state: int = 42, cat_features=None, fe_pipeline=None
+) -> Pipeline:
+    if fe_pipeline is None:
+        fe_pipeline = FunctionTransformer(lambda x: x, validate=False)
+
     pipeline = Pipeline(
         [
+            ("feature_engineering", fe_pipeline),
             (
                 "model",
                 CatBoostWrapper(
