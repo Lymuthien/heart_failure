@@ -54,7 +54,7 @@ class GroupZScore(BaseEstimator, TransformerMixin):
 
 class TargetEncoderByBins(BaseEstimator, TransformerMixin):
     def __init__(
-        self, binning_cols: list[str], cat_cols: list[str], n_bins: int = 5, cv=None
+        self, binning_cols: list[str], cat_cols: list[str], n_bins: list[int] | int = 5, cv=None
     ):
         self.binning_cols = binning_cols
         self.cat_cols = cat_cols
@@ -63,10 +63,12 @@ class TargetEncoderByBins(BaseEstimator, TransformerMixin):
 
     def _encode(self, X: pd.DataFrame, y=None, fit=False):
         X = X.copy()
+        if isinstance(self.n_bins, int):
+            self.n_bins = [self.n_bins] * len(self.binning_cols)
 
-        for bin_col in self.binning_cols:
+        for bin_col, n_bins in zip(self.binning_cols, self.n_bins):
             if fit:
-                binner = KBinsDiscretizer(n_bins=self.n_bins, encode="ordinal")
+                binner = KBinsDiscretizer(n_bins, encode="ordinal")
                 bins = binner.fit_transform(X[[bin_col]]).ravel().astype(int)
                 self.binners_[bin_col] = binner
             else:
