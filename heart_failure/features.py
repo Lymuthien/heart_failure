@@ -9,12 +9,18 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import StratifiedKFold
 
-from heart_failure.config.config import SEX, AGE, MAX_HR, OLDPEAK, FASTING_BS
+from heart_failure.config.config import (
+    SEX,
+    AGE,
+    MAX_HR,
+    OLDPEAK,
+    FASTING_BS,
+    ST_SLOPE,
+)
 from heart_failure.config.features import (
     TE_FEATURES,
     BINARIZED_FEATURES,
     BINARY_CAT_FEATURES,
-    Z_SCORED_FEATURES,
     OLDPEAK_TE_FEATURES,
     MAX_HR_TE_FEATURES,
     FASTING_BS_TE_FEATURES,
@@ -25,6 +31,7 @@ from heart_failure.config.features import (
     CONJUNCTIVE_RULES,
     TE_CV,
     RANDOM_STATE,
+    ST_TE_FEATURES,
 )
 
 
@@ -54,7 +61,11 @@ class GroupZScore(BaseEstimator, TransformerMixin):
 
 class TargetEncoderByBins(BaseEstimator, TransformerMixin):
     def __init__(
-        self, binning_cols: list[str], cat_cols: list[str], n_bins: list[int] | int = 5, cv=None
+        self,
+        binning_cols: list[str],
+        cat_cols: list[str],
+        n_bins: list[int] | int = 5,
+        cv=None,
     ):
         self.binning_cols = binning_cols
         self.cat_cols = cat_cols
@@ -66,6 +77,7 @@ class TargetEncoderByBins(BaseEstimator, TransformerMixin):
         if isinstance(self.n_bins, int):
             self.n_bins = [self.n_bins] * len(self.binning_cols)
 
+        bin_labels = []
         for bin_col, n_bins in zip(self.binning_cols, self.n_bins):
             if fit:
                 binner = KBinsDiscretizer(n_bins, encode="ordinal")
@@ -75,26 +87,24 @@ class TargetEncoderByBins(BaseEstimator, TransformerMixin):
                 binner = self.binners_[bin_col]
                 bins = binner.transform(X[[bin_col]]).ravel().astype(int)
 
-            bin_labels = pd.Series(bins, index=X.index)
+            bin_labels += [pd.Series(bins, index=X.index).astype(str)]
 
-            for cat_col in self.cat_cols:
-                cross = X[cat_col].astype(str) + "__" + bin_labels.astype(str)
+        for cat_col in self.cat_cols:
+            df = pd.concat([X[cat_col].astype(str)] + bin_labels, axis=1)
+            cross = df.agg("__".join, axis=1)
 
-                encoder = self.encoders_[(bin_col, cat_col)]
-                if fit:
-                    encoded = encoder.fit_transform(cross.to_frame("cross"), y)
-                else:
-                    encoded = encoder.transform(cross.to_frame("cross"))
+            encoder = self.encoders_[cat_col]
+            if fit:
+                encoded = encoder.fit_transform(cross.to_frame("cross"), y)
+            else:
+                encoded = encoder.transform(cross.to_frame("cross"))
 
-                X[f"{bin_col}_{cat_col}_te"] = encoded.ravel()
+            X[f"{"_".join(self.binning_cols)}_{cat_col}_te"] = encoded.ravel()
 
         return X
 
     def _init_encoders(self):
-        return {
-            (bin_col, cat_col): TargetEncoder(cv=self.cv)
-            for bin_col, cat_col in product(self.binning_cols, self.cat_cols)
-        }
+        return {cat_col: TargetEncoder(cv=self.cv) for cat_col in self.cat_cols}
 
     def fit(self, X: pd.DataFrame, y):
         self.binners_ = {}
@@ -248,10 +258,13 @@ def get_fe_pipeline(cv=None, combine_rules=True) -> Pipeline:
                     CONJ_RULES, CONJ_MIN_MASK_COUNT, CONJ_MIN_TARGET_RATE, combine_rules
                 ),
             ),
-            ("group_zscore", GroupZScore([AGE, SEX], Z_SCORED_FEATURES)),
             (
                 "oldpeak_te",
                 TargetEncoderByBins([OLDPEAK], OLDPEAK_TE_FEATURES, n_bins=4, cv=cv),
+            ),
+            (
+                "oldpeak_cholesterol_te",
+                TargetEncoderByBins(ST_TE_FEATURES, [ST_SLOPE], n_bins=[4, 3], cv=cv),
             ),
             (
                 "te_by_max_hr",
