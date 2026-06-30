@@ -16,12 +16,12 @@ from heart_failure.config.config import (
     OLDPEAK,
     FASTING_BS,
     ST_SLOPE,
+    CHEST_PAIN_TYPE,
 )
 from heart_failure.config.features import (
     TE_FEATURES,
     BINARIZED_FEATURES,
     BINARY_CAT_FEATURES,
-    OLDPEAK_TE_FEATURES,
     MAX_HR_TE_FEATURES,
     FASTING_BS_TE_FEATURES,
     CONJ_RULES,
@@ -32,6 +32,7 @@ from heart_failure.config.features import (
     TE_CV,
     RANDOM_STATE,
     ST_TE_FEATURES,
+    SEX_CAT_TE,
 )
 
 
@@ -245,39 +246,45 @@ def get_preprocessor(cv):
     return preprocessor
 
 
-def get_fe_pipeline(cv=None, combine_rules=True) -> Pipeline:
+def get_fe_pipeline(cv=None, combine_rules=True, conj_feature=True) -> Pipeline:
     if cv is None:
         cv = StratifiedKFold(n_splits=TE_CV, shuffle=True, random_state=RANDOM_STATE)
 
-    pipeline = Pipeline(
-        [
-            ("age_maxhr_ratio", RatioFeature(AGE, MAX_HR)),
+    steps = []
+    if conj_feature:
+        steps.append(
             (
                 "rule_aggregator",
                 ConjRuleFeature(
                     CONJ_RULES, CONJ_MIN_MASK_COUNT, CONJ_MIN_TARGET_RATE, combine_rules
                 ),
-            ),
-            (
-                "oldpeak_te",
-                TargetEncoderByBins([OLDPEAK], OLDPEAK_TE_FEATURES, n_bins=4, cv=cv),
-            ),
-            (
-                "oldpeak_cholesterol_te",
-                TargetEncoderByBins(ST_TE_FEATURES, [ST_SLOPE], n_bins=[4, 3], cv=cv),
-            ),
-            (
-                "te_by_max_hr",
-                TargetEncoderByBins([MAX_HR], MAX_HR_TE_FEATURES, n_bins=4, cv=cv),
-            ),
-            ("sex_te", TargetEncoderByBins(SEX_TE_FEATURES, [SEX], n_bins=5, cv=cv)),
-            (
-                "fasting_bs_te",
-                CrossTargetEncoder(([FASTING_BS], FASTING_BS_TE_FEATURES), cv=cv),
-            ),
-            ("preprocessor", get_preprocessor(cv)),
-        ]
-    )
+            )
+        )
+
+    steps += [
+        ("age_maxhr_ratio", RatioFeature(AGE, MAX_HR)),
+        (
+            "oldpeak_cpt_te",
+            TargetEncoderByBins([OLDPEAK], [CHEST_PAIN_TYPE], n_bins=4, cv=cv),
+        ),
+        (
+            "st_te",
+            TargetEncoderByBins(ST_TE_FEATURES, [ST_SLOPE], n_bins=[4, 3], cv=cv),
+        ),
+        (
+            "te_by_max_hr",
+            TargetEncoderByBins([MAX_HR], MAX_HR_TE_FEATURES, n_bins=4, cv=cv),
+        ),
+        ("sex_te", TargetEncoderByBins(SEX_TE_FEATURES, [SEX], n_bins=5, cv=cv)),
+        ("sex_cat_te", CrossTargetEncoder((SEX_CAT_TE, [SEX]), cv=cv)),
+        (
+            "fasting_bs_te",
+            CrossTargetEncoder(([FASTING_BS], FASTING_BS_TE_FEATURES), cv=cv),
+        ),
+        ("preprocessor", get_preprocessor(cv)),
+    ]
+
+    pipeline = Pipeline(steps)
 
     return pipeline
 

@@ -35,6 +35,7 @@ dependencies = [
     "optuna>=4.9.0",
     "catboost>=1.2.10",
     "xgboost>=3.3.0",
+    "shap>=0.52.0",
 ]
 requires-python = "~=3.13.0"
 
