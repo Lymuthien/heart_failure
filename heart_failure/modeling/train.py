@@ -2,16 +2,30 @@ import optuna
 import pandas as pd
 from optuna.samplers import TPESampler
 from sklearn.model_selection import cross_val_score, StratifiedKFold
-from sklearn.metrics import average_precision_score
+from sklearn.metrics import average_precision_score, precision_score
+
+from heart_failure.config.modeling import MIN_RECALL
+from heart_failure.modeling.evaluate import find_best_threshold
 
 
-def ap_scorer(estimator, X, y):
+def ap_scorer(estimator, X, y, sample_weight=None):
     proba = estimator.predict_proba(X)
 
     if proba.ndim == 2:
         proba = proba[:, 1]
 
-    return average_precision_score(y, proba)
+    return average_precision_score(y, proba, sample_weight=sample_weight)
+
+
+def prec_scorer(estimator, X, y, sample_weight=None):
+    proba = estimator.predict_proba(X)
+    if proba.ndim == 2:
+        proba = proba[:, 1]
+
+    threshold = find_best_threshold(y, proba, MIN_RECALL)
+    pred = (proba >= threshold).astype(int)
+
+    return precision_score(y, pred, sample_weight=sample_weight)
 
 
 def optuna_search(
@@ -19,15 +33,18 @@ def optuna_search(
     y: pd.Series,
     model_builder: callable,
     param_space: callable,
-    scoring=ap_scorer,
+    scoring=prec_scorer,
     n_trials: int = 50,
     n_splits: int = 5,
     n_jobs: int = -1,
     random_state: int = 42,
     timeout=None,
     optimize_direction="maximize",
+    cv_scorer=cross_val_score,
+    cv_params=None,
     **kwargs,
 ):
+    cv_params = cv_params or {}
     cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
 
     def objective(trial):
@@ -36,7 +53,7 @@ def optuna_search(
         pipeline = model_builder(random_state=random_state, **kwargs)
         pipeline.set_params(**{f"model__{k}": v for k, v in model_params.items()})
 
-        scores = cross_val_score(pipeline, X, y, cv=cv, scoring=scoring)
+        scores = cv_scorer(pipeline, X, y, cv=cv, scoring=scoring, **cv_params)
         trial.set_user_attr("cv_scores", scores.tolist())
 
         return scores.mean()
