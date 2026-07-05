@@ -71,9 +71,9 @@ class CatBoostWrapper(BaseEstimator, ClassifierMixin):
 
         return self
 
-    def fit(self, X: pd.DataFrame, y):
+    def fit(self, X: pd.DataFrame, y, **kwargs):
         self.model_ = CatBoostClassifier(**self._params)
-        self.model_.fit(X, y, cat_features=self.cat_features)
+        self.model_.fit(X, y, cat_features=self.cat_features, **kwargs)
 
         self.classes_ = self.model_.classes_
         self.is_fitted_ = True
