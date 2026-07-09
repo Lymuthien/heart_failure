@@ -76,7 +76,8 @@ def plot_pr_curve(y_true, y_proba):
 
 
 def kdeplot_features_by_target(df: pd.DataFrame, cols: list[str], target: str):
-    fig, axes = plt.subplots(1, len(cols), figsize=(15, 4))
+    fig, axes = plt.subplots(1, len(cols), figsize=(15, 4), squeeze=False)
+    axes = axes.ravel()
 
     for ax, f in zip(axes, cols):
         sns.kdeplot(
