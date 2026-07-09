@@ -232,8 +232,12 @@ class RatioFeature(BaseEstimator, TransformerMixin):
         return X
 
 
-def get_preprocessor(cv, n_bins=8):
-    binner = KBinsDiscretizer(n_bins=n_bins, encode="ordinal")
+def get_preprocessor(cv, n_bins=8, use_binner: bool = True):
+    binner = (
+        KBinsDiscretizer(n_bins=n_bins, encode="ordinal")
+        if use_binner
+        else "passthrough"
+    )
     preprocessor = ColumnTransformer(
         [
             ("target_encoder", TargetEncoder(cv=cv), TE_FEATURES),
@@ -246,7 +250,9 @@ def get_preprocessor(cv, n_bins=8):
     return preprocessor
 
 
-def get_fe_pipeline(cv=None, combine_rules=True, conj_feature=True, n_bins=8) -> Pipeline:
+def get_fe_pipeline(
+    cv=None, combine_rules=True, conj_feature=True, n_bins=8, use_binner=True
+) -> Pipeline:
     if cv is None:
         cv = StratifiedKFold(n_splits=TE_CV, shuffle=True, random_state=RANDOM_STATE)
 
@@ -281,12 +287,18 @@ def get_fe_pipeline(cv=None, combine_rules=True, conj_feature=True, n_bins=8) ->
             "fasting_bs_te",
             CrossTargetEncoder(([FASTING_BS], FASTING_BS_TE_FEATURES), cv=cv),
         ),
-        ("preprocessor", get_preprocessor(cv, n_bins)),
+        ("preprocessor", get_preprocessor(cv, n_bins, use_binner)),
     ]
 
     pipeline = Pipeline(steps)
 
     return pipeline
+
+
+def get_prep_pipeline(cv=None, n_bins=8, use_binner=True):
+    if cv is None:
+        cv = StratifiedKFold(n_splits=TE_CV, shuffle=True, random_state=RANDOM_STATE)
+    return Pipeline([("preprocessor", get_preprocessor(cv, n_bins, use_binner))])
 
 
 def select_by_vif(
