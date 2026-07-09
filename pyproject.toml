@@ -17,7 +17,6 @@ classifiers = [
 ]
 dependencies = [
     "ipython>=9.14.1",
-    "loguru",
     "matplotlib>=3.10.9",
     "numpy>=2.4.6",
     "pandas>=2.3.3",
