@@ -232,12 +232,12 @@ class RatioFeature(BaseEstimator, TransformerMixin):
         return X
 
 
-def get_preprocessor(cv, n_bins=10):
-    binarizer = KBinsDiscretizer(n_bins=n_bins, encode="ordinal")
+def get_preprocessor(cv, n_bins=8):
+    binner = KBinsDiscretizer(n_bins=n_bins, encode="ordinal")
     preprocessor = ColumnTransformer(
         [
             ("target_encoder", TargetEncoder(cv=cv), TE_FEATURES),
-            ("binarizer", binarizer, BINARIZED_FEATURES),
+            ("binner", binner, BINARIZED_FEATURES),
             ("binary_encoder", OrdinalEncoder(), BINARY_CAT_FEATURES),
         ],
         remainder="passthrough",
@@ -246,7 +246,7 @@ def get_preprocessor(cv, n_bins=10):
     return preprocessor
 
 
-def get_fe_pipeline(cv=None, combine_rules=True, conj_feature=True, n_bins=10) -> Pipeline:
+def get_fe_pipeline(cv=None, combine_rules=True, conj_feature=True, n_bins=8) -> Pipeline:
     if cv is None:
         cv = StratifiedKFold(n_splits=TE_CV, shuffle=True, random_state=RANDOM_STATE)
 
