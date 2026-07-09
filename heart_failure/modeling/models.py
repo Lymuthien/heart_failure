@@ -11,7 +11,13 @@ from xgboost import XGBClassifier
 
 from heart_failure.features import ConjRuleFeature
 from heart_failure.config.features import CONJUNCTIVE_RULES
-from heart_failure.config.modeling import CB_EVAL_METRIC
+from heart_failure.config.modeling import (
+    CB_EVAL_METRIC,
+    FE_STEP_NAME,
+    MODEL_STEP_NAME,
+    COL_SEL_STEP_NAME,
+    SCALER_STEP_NAME,
+)
 
 
 class ConjRuleBaseline(BaseEstimator, ClassifierMixin):
@@ -93,10 +99,10 @@ def build_lr_pipeline(
 ) -> Pipeline:
     pipeline = Pipeline(
         [
-            ("feature_engineering", fe_pipeline),
-            ("column_selector", ColumnSelector(rem_columns)),
-            ("scaler", StandardScaler()),
-            ("model", LogisticRegression(random_state=random_state)),
+            (FE_STEP_NAME, fe_pipeline),
+            (COL_SEL_STEP_NAME, ColumnSelector(rem_columns)),
+            (SCALER_STEP_NAME, StandardScaler()),
+            (MODEL_STEP_NAME, LogisticRegression(random_state=random_state)),
         ]
     )
 
@@ -108,9 +114,9 @@ def build_dt_pipeline(
 ) -> Pipeline:
     pipeline = Pipeline(
         [
-            ("feature_engineering", fe_pipeline),
-            ("column_selector", ColumnSelector(rem_columns)),
-            ("model", DecisionTreeClassifier(random_state=random_state)),
+            (FE_STEP_NAME, fe_pipeline),
+            (COL_SEL_STEP_NAME, ColumnSelector(rem_columns)),
+            (MODEL_STEP_NAME, DecisionTreeClassifier(random_state=random_state)),
         ]
     )
 
@@ -125,9 +131,9 @@ def build_catboost_pipeline(
 
     pipeline = Pipeline(
         [
-            ("feature_engineering", fe_pipeline),
+            (FE_STEP_NAME, fe_pipeline),
             (
-                "model",
+                MODEL_STEP_NAME,
                 CatBoostWrapper(
                     cat_features=cat_features,
                     random_seed=random_state,
@@ -152,9 +158,9 @@ def build_xgboost_pipeline(
         params = {}
     pipeline = Pipeline(
         [
-            ("feature_engineering", fe_pipeline),
-            ("column_selector", ColumnSelector(rem_columns)),
-            ("model", XGBClassifier(random_state=random_state, **params)),
+            (FE_STEP_NAME, fe_pipeline),
+            (COL_SEL_STEP_NAME, ColumnSelector(rem_columns)),
+            (MODEL_STEP_NAME, XGBClassifier(random_state=random_state, **params)),
         ]
     )
 
