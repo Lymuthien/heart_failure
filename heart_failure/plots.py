@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import plotly.express as px
 import matplotlib.pyplot as plt
-import seaborn as sns
+from sklearn.metrics import precision_recall_curve
 
 from typing import Callable
 
@@ -48,7 +49,7 @@ def plot_cat_target_distribution(
 
 
 def plot_corr_matrix(
-    corr_df: pd.DataFrame, max_abs: float = 1, width: int = 500, height: int = 500
+    corr_df: pd.DataFrame, max_abs: float = 1, width=500, height=500, fontsize=12
 ):
     fig = px.imshow(
         corr_df,
@@ -59,5 +60,29 @@ def plot_corr_matrix(
         zmin=-max_abs,
         zmax=max_abs,
     )
-    fig.update_layout(width=width, height=height)
+    fig.update_layout(width=width, height=height, font=dict(size=fontsize))
     fig.show()
+
+
+def plot_pr_curve(y_true, y_proba):
+    precision, recall, thresholds = precision_recall_curve(y_true, y_proba)
+
+    plt.plot(recall, precision)
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.title("Precision–Recall Curve")
+    plt.grid(True)
+    plt.show()
+
+
+def kdeplot_features_by_target(df: pd.DataFrame, cols: list[str], target: str):
+    fig, axes = plt.subplots(1, len(cols), figsize=(15, 4), squeeze=False)
+    axes = axes.ravel()
+
+    for ax, f in zip(axes, cols):
+        sns.kdeplot(
+            df, x=f, hue=target, fill=True, common_norm=False, alpha=0.3, ax=ax
+        )
+
+    plt.tight_layout()
+    plt.show()
