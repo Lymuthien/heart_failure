@@ -18,7 +18,7 @@ from heart_failure.config.config import (
 )
 from heart_failure.config.features import (
     TE_FEATURES,
-    BINARIZED_FEATURES,
+    QBINNED_FEATURES,
     BINARY_CAT_FEATURES,
     MAX_HR_TE_FEATURES,
     FASTING_BS_TE_FEATURES,
@@ -31,6 +31,7 @@ from heart_failure.config.features import (
     RANDOM_STATE,
     ST_TE_FEATURES,
     SEX_CAT_TE,
+    F_BINS,
 )
 
 
@@ -230,20 +231,39 @@ class RatioFeature(BaseEstimator, TransformerMixin):
         return X
 
 
+class FixedBinsDiscretizer(TransformerMixin, BaseEstimator):
+    def __init__(self, bins: list[int]):
+        self.bins = bins
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        X_enc = X.apply(lambda s: pd.cut(s, bins=self.bins, labels=False))
+        return X_enc
+
+    def set_output(self, *, transform=None):
+        return self
+
+
 def get_preprocessor(cv, n_bins=8, use_binner: bool = True):
     binner = (
         KBinsDiscretizer(n_bins=n_bins, encode="ordinal")
         if use_binner
         else "passthrough"
     )
-    preprocessor = ColumnTransformer(
-        [
-            ("target_encoder", TargetEncoder(cv=cv), TE_FEATURES),
-            ("binner", binner, BINARIZED_FEATURES),
-            ("binary_encoder", OrdinalEncoder(), BINARY_CAT_FEATURES),
-        ],
-        remainder="passthrough",
-    )
+    transformers = [
+        ("target_encoder", TargetEncoder(cv=cv), TE_FEATURES),
+        ("binner_quantile", binner, QBINNED_FEATURES),
+        ("binary_encoder", OrdinalEncoder(), BINARY_CAT_FEATURES),
+    ]
+    if use_binner:
+        for feature, bins in F_BINS.items():
+            # noinspection PyTypeChecker
+            transformers.append(
+                (f"binner_{feature[:3]}", FixedBinsDiscretizer(bins), [feature])
+            )
+    preprocessor = ColumnTransformer(transformers, remainder="passthrough")
     preprocessor.set_output(transform="pandas")
     return preprocessor
 
