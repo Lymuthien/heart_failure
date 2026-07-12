@@ -38,8 +38,15 @@ class ConjRuleBaseline(BaseEstimator, ClassifierMixin):
 
 
 class ColumnSelector(TransformerMixin, BaseEstimator):
-    def __init__(self, remaining_columns: list[str] = None):
+    def __init__(
+        self,
+        remaining_columns: list[str] = None,
+        top_list: list[str] = None,
+        top_k: int = None,
+    ):
         self.remaining_columns = remaining_columns
+        self.top_list = top_list
+        self.top_k = top_k
 
     def fit(self, X, y=None):
         return self
@@ -47,6 +54,10 @@ class ColumnSelector(TransformerMixin, BaseEstimator):
     def transform(self, X):
         if self.remaining_columns:
             X = X[self.remaining_columns]
+
+        if self.top_list and self.top_k:
+            top_k_list = self.top_list[: self.top_k]
+            X = X[top_k_list]
 
         return X
 
@@ -148,7 +159,7 @@ def build_catboost_pipeline(
 
 def build_xgboost_pipeline(
     fe_pipeline: Pipeline,
-    rem_columns: list[str] = None,
+    cs_params: dict = None,
     random_state: int = 42,
     cat_features: bool = False,
 ) -> Pipeline:
@@ -156,10 +167,11 @@ def build_xgboost_pipeline(
         params = {"enable_categorical": True, "tree_method": "hist"}
     else:
         params = {}
+    cs_params = cs_params or {}
     pipeline = Pipeline(
         [
             (FE_STEP_NAME, fe_pipeline),
-            (COL_SEL_STEP_NAME, ColumnSelector(rem_columns)),
+            (COL_SEL_STEP_NAME, ColumnSelector(**cs_params)),
             (MODEL_STEP_NAME, XGBClassifier(random_state=random_state, **params)),
         ]
     )

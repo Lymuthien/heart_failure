@@ -4,7 +4,7 @@ from optuna.samplers import TPESampler
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.metrics import average_precision_score, precision_score
 
-from heart_failure.config.modeling import MIN_RECALL
+from heart_failure.config.modeling import MIN_RECALL, FE_STEP_NAME, COL_SEL_STEP_NAME
 from heart_failure.modeling.evaluate import find_best_threshold
 
 
@@ -107,9 +107,13 @@ def dt_space(trial):
 def catboost_space(trial):
     params = {
         "model__iterations": trial.suggest_int("model__iterations", 200, 800),
-        "model__learning_rate": trial.suggest_float("model__learning_rate", 1e-3, 0.2, log=True),
+        "model__learning_rate": trial.suggest_float(
+            "model__learning_rate", 1e-3, 0.2, log=True
+        ),
         "model__depth": trial.suggest_int("model__depth", 2, 5),
-        "model__l2_leaf_reg": trial.suggest_float("model__l2_leaf_reg", 1e-4, 10, log=True),
+        "model__l2_leaf_reg": trial.suggest_float(
+            "model__l2_leaf_reg", 1e-4, 10, log=True
+        ),
         "model__min_data_in_leaf": trial.suggest_int("model__min_data_in_leaf", 5, 50),
         "model__subsample": trial.suggest_float("model__subsample", 0.7, 1),
         "model__rsm": trial.suggest_float("model__rsm", 0.5, 1),
@@ -120,6 +124,9 @@ def catboost_space(trial):
 
 
 def xgboost_space(trial):
+    use_binner_key = f"{FE_STEP_NAME}__preprocessor__use_binner"
+    top_k_key = f"{COL_SEL_STEP_NAME}__top_k"
+
     params = {
         "model__n_estimators": trial.suggest_int("model__n_estimators", 200, 800),
         "model__learning_rate": trial.suggest_float(
@@ -127,12 +134,14 @@ def xgboost_space(trial):
         ),
         "model__gamma": trial.suggest_float("model__gamma", 0, 2),
         "model__max_depth": trial.suggest_int("model__max_depth", 2, 5),
-        "model__reg_lambda": trial.suggest_float("model__reg_lambda", 1e-4, 10, log=True),
+        "model__reg_lambda": trial.suggest_float(
+            "model__reg_lambda", 1e-4, 10, log=True
+        ),
         "model__reg_alpha": trial.suggest_float("model__reg_alpha", 1e-4, 1, log=True),
         "model__subsample": trial.suggest_float("model__subsample", 0.7, 1),
         "model__verbose": 0,
+        use_binner_key: trial.suggest_categorical(use_binner_key, [True, False]),
+        top_k_key: trial.suggest_int(top_k_key, 3, 20),
     }
-    use_binner = trial.suggest_categorical("use_binner", [True, False])
-    params["feature_engineering__preprocessor__use_binner"] = use_binner
 
     return params

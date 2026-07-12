@@ -35,30 +35,6 @@ from heart_failure.config.features import (
 )
 
 
-class GroupZScore(BaseEstimator, TransformerMixin):
-    def __init__(self, group_cols: list[str], value_cols: list[str]):
-        self.group_cols = group_cols
-        self.value_cols = value_cols
-
-    def fit(self, X: pd.DataFrame, y=None):
-        self.stats_ = X.groupby(self.group_cols)[self.value_cols].agg(["mean", "std"])
-        self.stats_.columns = [f"{col}_{stat}" for col, stat in self.stats_.columns]
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        X = X.copy()
-
-        tmp = X.merge(
-            self.stats_, left_on=self.group_cols, right_index=True, how="left"
-        )
-
-        for col in self.value_cols:
-            z = (tmp[col] - tmp[f"{col}_mean"]) / tmp[f"{col}_std"]
-            X[f"{col}_z"] = z.replace([np.inf, -np.inf], 0).fillna(0)
-
-        return X
-
-
 class TEByBins(BaseEstimator, TransformerMixin):
     def __init__(
         self,
@@ -247,10 +223,11 @@ class FixedBinsDiscretizer(TransformerMixin, BaseEstimator):
 
 
 class Preprocessor(TransformerMixin, BaseEstimator):
-    def __init__(self, cv, n_bins=8, use_binner=True):
+    def __init__(self, cv, n_bins=8, use_binner=True, rename_features=True):
         self.cv = cv
         self.n_bins = n_bins
         self.use_binner = use_binner
+        self.rename_features = rename_features
 
     # noinspection PyTypeChecker
     def _build_transformer(self):
@@ -267,7 +244,11 @@ class Preprocessor(TransformerMixin, BaseEstimator):
                 binner = FixedBinsDiscretizer(bins)
                 transformers.append((f"binner_{feature}", binner, [feature]))
 
-        transformer = ColumnTransformer(transformers, remainder="passthrough")
+        transformer = ColumnTransformer(
+            transformers,
+            remainder="passthrough",
+            verbose_feature_names_out=self.rename_features,
+        )
         transformer.set_output(transform="pandas")
         return transformer
 
@@ -281,7 +262,12 @@ class Preprocessor(TransformerMixin, BaseEstimator):
 
 
 def get_fe_pipeline(
-    cv=None, combine_rules=True, conj_feature=True, n_bins=8, use_binner=True
+    cv=None,
+    combine_rules=True,
+    conj_feature=True,
+    n_bins=8,
+    use_binner=True,
+    rename_features=False,
 ) -> Pipeline:
     if cv is None:
         cv = StratifiedKFold(n_splits=TE_CV, shuffle=True, random_state=RANDOM_STATE)
@@ -302,7 +288,7 @@ def get_fe_pipeline(
         ("sex_cat_te", CrossTargetEncoder((SEX_CAT_TE, [SEX]), cv=cv)),
         ("recg_cat_te", CrossTargetEncoder((RECG_CAT_TE, [RESTING_ECG]), cv=cv)),
         ("oldpeak_recg_te", TEByBins([OLDPEAK], [RESTING_ECG], n_bins=4, cv=cv)),
-        ("preprocessor", Preprocessor(cv, n_bins, use_binner)),
+        ("preprocessor", Preprocessor(cv, n_bins, use_binner, rename_features)),
     ]
 
     pipeline = Pipeline(steps)
@@ -310,7 +296,12 @@ def get_fe_pipeline(
     return pipeline
 
 
-def get_prep_pipeline(cv=None, n_bins=8, use_binner=True):
+def get_prep_pipeline(
+    cv=None, n_bins=8, use_binner=True, rename_features=False
+) -> Pipeline:
     if cv is None:
         cv = StratifiedKFold(n_splits=TE_CV, shuffle=True, random_state=RANDOM_STATE)
-    return Pipeline([("preprocessor", Preprocessor(cv, n_bins, use_binner))])
+
+    return Pipeline(
+        [("preprocessor", Preprocessor(cv, n_bins, use_binner, rename_features))]
+    )
