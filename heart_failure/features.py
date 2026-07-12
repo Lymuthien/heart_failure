@@ -59,7 +59,7 @@ class GroupZScore(BaseEstimator, TransformerMixin):
         return X
 
 
-class TargetEncoderByBins(BaseEstimator, TransformerMixin):
+class TEByBins(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         binning_cols: list[str],
@@ -246,26 +246,38 @@ class FixedBinsDiscretizer(TransformerMixin, BaseEstimator):
         return self
 
 
-def get_preprocessor(cv, n_bins=8, use_binner: bool = True):
-    binner = (
-        KBinsDiscretizer(n_bins=n_bins, encode="ordinal")
-        if use_binner
-        else "passthrough"
-    )
-    transformers = [
-        ("target_encoder", TargetEncoder(cv=cv), TE_FEATURES),
-        ("binner_quantile", binner, QBINNED_FEATURES),
-        ("binary_encoder", OrdinalEncoder(), BINARY_CAT_FEATURES),
-    ]
-    if use_binner:
-        for feature, bins in F_BINS.items():
-            # noinspection PyTypeChecker
-            transformers.append(
-                (f"binner_{feature[:3]}", FixedBinsDiscretizer(bins), [feature])
-            )
-    preprocessor = ColumnTransformer(transformers, remainder="passthrough")
-    preprocessor.set_output(transform="pandas")
-    return preprocessor
+class Preprocessor(TransformerMixin, BaseEstimator):
+    def __init__(self, cv, n_bins=8, use_binner=True):
+        self.cv = cv
+        self.n_bins = n_bins
+        self.use_binner = use_binner
+
+    # noinspection PyTypeChecker
+    def _build_transformer(self):
+        transformers = [
+            ("target_encoder", TargetEncoder(cv=self.cv), TE_FEATURES),
+            ("binary_encoder", OrdinalEncoder(), BINARY_CAT_FEATURES),
+        ]
+
+        if self.use_binner:
+            binner = KBinsDiscretizer(n_bins=self.n_bins, encode="ordinal")
+            transformers.append(("binner_quantile", binner, QBINNED_FEATURES))
+
+            for feature, bins in F_BINS.items():
+                binner = FixedBinsDiscretizer(bins)
+                transformers.append((f"binner_{feature}", binner, [feature]))
+
+        transformer = ColumnTransformer(transformers, remainder="passthrough")
+        transformer.set_output(transform="pandas")
+        return transformer
+
+    def fit(self, X, y=None):
+        self.transformer_ = self._build_transformer()
+        self.transformer_.fit(X, y)
+        return self
+
+    def transform(self, X):
+        return self.transformer_.transform(X)
 
 
 def get_fe_pipeline(
@@ -276,36 +288,19 @@ def get_fe_pipeline(
 
     steps = []
     if conj_feature:
-        steps.append(
-            (
-                "rule_aggregator",
-                ConjRuleFeature(
-                    CONJ_RULES, CONJ_MIN_MASK_COUNT, CONJ_MIN_TARGET_RATE, combine_rules
-                ),
-            )
+        rule_aggregator = ConjRuleFeature(
+            CONJ_RULES, CONJ_MIN_MASK_COUNT, CONJ_MIN_TARGET_RATE, combine_rules
         )
+        steps.append(("rule_aggregator", rule_aggregator))
 
     steps += [
         ("age_maxhr_ratio", RatioFeature(AGE, MAX_HR)),
-        (
-            "oldpeak_cpt_te",
-            TargetEncoderByBins([OLDPEAK], [CHEST_PAIN_TYPE], n_bins=4, cv=cv),
-        ),
-        (
-            "st_te",
-            TargetEncoderByBins(ST_TE_FEATURES, [ST_SLOPE], n_bins=[4, 3], cv=cv),
-        ),
-        (
-            "te_by_max_hr",
-            TargetEncoderByBins([MAX_HR], MAX_HR_TE_FEATURES, n_bins=4, cv=cv),
-        ),
-        ("sex_te", TargetEncoderByBins(SEX_TE_FEATURES, [SEX], n_bins=5, cv=cv)),
+        ("oldpeak_cpt_te", TEByBins([OLDPEAK], [CHEST_PAIN_TYPE], n_bins=4, cv=cv)),
+        ("st_te", TEByBins(ST_TE_FEATURES, [ST_SLOPE], n_bins=[4, 3], cv=cv)),
+        ("te_by_max_hr", TEByBins([MAX_HR], MAX_HR_TE_FEATURES, n_bins=4, cv=cv)),
+        ("sex_te", TEByBins(SEX_TE_FEATURES, [SEX], n_bins=5, cv=cv)),
         ("sex_cat_te", CrossTargetEncoder((SEX_CAT_TE, [SEX]), cv=cv)),
-        (
-            "fasting_bs_te",
-            CrossTargetEncoder(([FASTING_BS], FASTING_BS_TE_FEATURES), cv=cv),
-        ),
-        ("preprocessor", get_preprocessor(cv, n_bins, use_binner)),
+        ("preprocessor", Preprocessor(cv, n_bins, use_binner)),
     ]
 
     pipeline = Pipeline(steps)
@@ -316,4 +311,4 @@ def get_fe_pipeline(
 def get_prep_pipeline(cv=None, n_bins=8, use_binner=True):
     if cv is None:
         cv = StratifiedKFold(n_splits=TE_CV, shuffle=True, random_state=RANDOM_STATE)
-    return Pipeline([("preprocessor", get_preprocessor(cv, n_bins, use_binner))])
+    return Pipeline([("preprocessor", Preprocessor(cv, n_bins, use_binner))])

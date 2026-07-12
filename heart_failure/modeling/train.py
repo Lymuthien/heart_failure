@@ -133,7 +133,6 @@ def xgboost_space(trial):
         "model__verbose": 0,
     }
     use_binner = trial.suggest_categorical("use_binner", [True, False])
-    if not use_binner:
-        params["feature_engineering__preprocessor__binner"] = "passthrough"
+    params["feature_engineering__preprocessor__use_binner"] = use_binner
 
     return params
