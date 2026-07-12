@@ -12,16 +12,15 @@ from heart_failure.config.config import (
     AGE,
     MAX_HR,
     OLDPEAK,
-    FASTING_BS,
     ST_SLOPE,
     CHEST_PAIN_TYPE,
+    RESTING_ECG,
 )
 from heart_failure.config.features import (
     TE_FEATURES,
     QBINNED_FEATURES,
     BINARY_CAT_FEATURES,
     MAX_HR_TE_FEATURES,
-    FASTING_BS_TE_FEATURES,
     CONJ_RULES,
     CONJ_MIN_MASK_COUNT,
     CONJ_MIN_TARGET_RATE,
@@ -32,6 +31,7 @@ from heart_failure.config.features import (
     ST_TE_FEATURES,
     SEX_CAT_TE,
     F_BINS,
+    RECG_CAT_TE,
 )
 
 
@@ -300,6 +300,8 @@ def get_fe_pipeline(
         ("te_by_max_hr", TEByBins([MAX_HR], MAX_HR_TE_FEATURES, n_bins=4, cv=cv)),
         ("sex_te", TEByBins(SEX_TE_FEATURES, [SEX], n_bins=5, cv=cv)),
         ("sex_cat_te", CrossTargetEncoder((SEX_CAT_TE, [SEX]), cv=cv)),
+        ("recg_cat_te", CrossTargetEncoder((RECG_CAT_TE, [RESTING_ECG]), cv=cv)),
+        ("oldpeak_recg_te", TEByBins([OLDPEAK], [RESTING_ECG], n_bins=4, cv=cv)),
         ("preprocessor", Preprocessor(cv, n_bins, use_binner)),
     ]
 
