@@ -26,7 +26,7 @@ def cat_pct_distr_by_group(df: pd.DataFrame, group) -> pd.DataFrame:
 
 
 def describe_by_group(df: pd.DataFrame, group):
-    numeric = df.select_dtypes("number").columns
+    numeric = df.select_dtypes(include=["number"]).columns
     grouped = df.groupby(group, observed=True)
 
     result = grouped[numeric].agg(["mean", "median"])
