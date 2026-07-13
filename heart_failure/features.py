@@ -284,7 +284,7 @@ def get_fe_pipeline(
         ("oldpeak_cpt_te", TEByBins([OLDPEAK], [CHEST_PAIN_TYPE], n_bins=4, cv=cv)),
         ("st_te", TEByBins(ST_TE_FEATURES, [ST_SLOPE], n_bins=[4, 3], cv=cv)),
         ("te_by_max_hr", TEByBins([MAX_HR], MAX_HR_TE_FEATURES, n_bins=4, cv=cv)),
-        ("sex_te", TEByBins(SEX_TE_FEATURES, [SEX], n_bins=5, cv=cv)),
+        ("sex_te", TEByBins(SEX_TE_FEATURES, [SEX], n_bins=[5, 3], cv=cv)),
         ("sex_cat_te", CrossTargetEncoder((SEX_CAT_TE, [SEX]), cv=cv)),
         ("recg_cat_te", CrossTargetEncoder((RECG_CAT_TE, [RESTING_ECG]), cv=cv)),
         ("oldpeak_recg_te", TEByBins([OLDPEAK], [RESTING_ECG], n_bins=4, cv=cv)),
