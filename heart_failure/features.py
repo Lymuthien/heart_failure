@@ -237,9 +237,6 @@ class Preprocessor(TransformerMixin, BaseEstimator):
         ]
 
         if self.use_binner:
-            binner = KBinsDiscretizer(n_bins=self.n_bins, encode="ordinal")
-            transformers.append(("binner_quantile", binner, QBINNED_FEATURES))
-
             for feature, bins in F_BINS.items():
                 binner = FixedBinsDiscretizer(bins)
                 transformers.append((f"binner_{feature}", binner, [feature]))
