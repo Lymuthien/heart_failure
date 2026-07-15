@@ -49,7 +49,16 @@ TE_FEATURE_CONFIG = [
         "name": "oldpeak_cpt_te",
         "features": [OLDPEAK, CHEST_PAIN_TYPE],
         "bins": {OLDPEAK: 4},
-        "merge_rules": None,
+        "merge_rules": {
+            "0__ASY": "0",
+            "0__NAP": "0",
+            "0__TA": "0",
+            "1__TA": "123_TA",
+            "2__TA": "123_TA",
+            "3__TA": "123_TA",
+            "2__ATA": "23_ATA",
+            "3__ATA": "23_ATA",
+        },
     },
     {
         "name": "st_te",
@@ -67,7 +76,7 @@ TE_FEATURE_CONFIG = [
         "name": "sex_te",
         "features": [AGE, CHOLESTEROL, SEX],
         "bins": {AGE: 5, CHOLESTEROL: 3},
-        "merge_rules": None,
+        "merge_rules": None
     },
     {
         "name": "sex_cpt_te",
@@ -77,9 +86,12 @@ TE_FEATURE_CONFIG = [
     },
     {
         "name": "sex_cat_te",
-        "features": [SEX, ST_SLOPE],
+        "features": [ST_SLOPE, SEX],
         "bins": None,
-        "merge_rules": None,
+        "merge_rules": {
+            "Down__F": "Down",
+            "Down__M": "Down",
+        },
     },
     {
         "name": "recg_cpt_te",
@@ -97,12 +109,15 @@ TE_FEATURE_CONFIG = [
         "name": "recg_sex_te",
         "features": [SEX, RESTING_ECG],
         "bins": None,
-        "merge_rules": None,
+        "merge_rules": {
+            "NAP__ST": "NAP-TA_ST",
+            "TA__ST": "NAP-TA_ST",
+        },
     },
     {
         "name": "oldpeak_recg_te",
         "features": [OLDPEAK, RESTING_ECG],
         "bins": {OLDPEAK: 4},
-        "merge_rules": None,
+        "merge_rules": {"0__LVH": "0", "0__Normal": "0", "0__ST": "0"},
     },
 ]

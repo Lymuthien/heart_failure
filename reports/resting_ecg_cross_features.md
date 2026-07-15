@@ -48,7 +48,7 @@ few categories for CPT=TA, so it makes sense not to break it down separately.
 
 The distribution for the remaining features is as follows:
 
-## ChestPainType & RestingECG
+## ExerciseAngina & RestingECG
 
 | ExerciseAngina | RestingECG | feature_mean | count |
 |----------------|------------|--------------|-------|
