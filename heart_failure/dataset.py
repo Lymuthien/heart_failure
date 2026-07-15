@@ -1,5 +1,5 @@
 from sklearn.model_selection import train_test_split
-from heart_failure.config.features import RANDOM_STATE, VAL_SIZE, TEST_SIZE
+from heart_failure.config.train import RANDOM_STATE, VAL_SIZE, TEST_SIZE
 
 def split_data(*arrays, stratify_func: callable):
     stratify = stratify_func(*arrays)
