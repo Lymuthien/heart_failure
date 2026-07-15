@@ -9,9 +9,9 @@ from heart_failure.config.config import (
     FASTING_BS,
     EXERCISE_ANGINA,
     OLDPEAK,
-    RESTING_BP,
 )
 
+# Conjunctive_rules feature
 CONJUNCTIVE_RULES = "conjunctive_rules"
 CONJ_RULES = {
     "Oldpeak ge 2": lambda X: X[OLDPEAK] >= 2,
@@ -28,18 +28,12 @@ CONJ_RULES = {
 CONJ_MIN_MASK_COUNT = 50
 CONJ_MIN_TARGET_RATE = 0.85
 
+# Preprocessing step
 TE_FEATURES = [RESTING_ECG, CHEST_PAIN_TYPE, ST_SLOPE]
-QBINNED_FEATURES = [MAX_HR]
 BINARY_CAT_FEATURES = [SEX, FASTING_BS, EXERCISE_ANGINA]
-OLDPEAK_TE_FEATURES = [CHEST_PAIN_TYPE]
-MAX_HR_TE_FEATURES = [RESTING_ECG]
-SEX_TE_FEATURES = [AGE, CHOLESTEROL]
-SEX_CAT_TE = [CHEST_PAIN_TYPE, ST_SLOPE]
-RECG_CAT_TE = [CHEST_PAIN_TYPE, ST_SLOPE, SEX, EXERCISE_ANGINA]
-ST_TE_FEATURES = [OLDPEAK, CHOLESTEROL]
-FASTING_BS_TE_FEATURES = [ST_SLOPE, CHEST_PAIN_TYPE, EXERCISE_ANGINA]
 F_BINS = {AGE: [0, 43, 50, 60, 65, 80], CHOLESTEROL: [0, 200, 220, 240, 270, 1000]}
 
+# Categorical features
 CAT_FEATURES = [
     SEX,
     CHEST_PAIN_TYPE,
@@ -47,4 +41,68 @@ CAT_FEATURES = [
     EXERCISE_ANGINA,
     FASTING_BS,
     ST_SLOPE,
+]
+
+# Cross-features target encoding
+TE_FEATURE_CONFIG = [
+    {
+        "name": "oldpeak_cpt_te",
+        "features": [OLDPEAK, CHEST_PAIN_TYPE],
+        "bins": {OLDPEAK: 4},
+        "merge_rules": None,
+    },
+    {
+        "name": "st_te",
+        "features": [OLDPEAK, CHOLESTEROL, ST_SLOPE],
+        "bins": {OLDPEAK: 4, CHOLESTEROL: 3},
+        "merge_rules": None,
+    },
+    {
+        "name": "te_by_max_hr",
+        "features": [MAX_HR, RESTING_ECG],
+        "bins": {MAX_HR: 4},
+        "merge_rules": None,
+    },
+    {
+        "name": "sex_te",
+        "features": [AGE, CHOLESTEROL, SEX],
+        "bins": {AGE: 5, CHOLESTEROL: 3},
+        "merge_rules": None,
+    },
+    {
+        "name": "sex_cpt_te",
+        "features": [CHEST_PAIN_TYPE, SEX],
+        "bins": None,
+        "merge_rules": None,
+    },
+    {
+        "name": "sex_cat_te",
+        "features": [SEX, ST_SLOPE],
+        "bins": None,
+        "merge_rules": None,
+    },
+    {
+        "name": "recg_cpt_te",
+        "features": [CHEST_PAIN_TYPE, RESTING_ECG],
+        "bins": None,
+        "merge_rules": None,
+    },
+    {
+        "name": "recg_stsl_te",
+        "features": [ST_SLOPE, RESTING_ECG],
+        "bins": None,
+        "merge_rules": None,
+    },
+    {
+        "name": "recg_sex_te",
+        "features": [SEX, RESTING_ECG],
+        "bins": None,
+        "merge_rules": None,
+    },
+    {
+        "name": "oldpeak_recg_te",
+        "features": [OLDPEAK, RESTING_ECG],
+        "bins": {OLDPEAK: 4},
+        "merge_rules": None,
+    },
 ]

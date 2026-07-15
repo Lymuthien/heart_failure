@@ -1,91 +1,62 @@
 import numpy as np
 import pandas as pd
-from itertools import product, combinations
+from itertools import combinations
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import TargetEncoder, KBinsDiscretizer, OrdinalEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import StratifiedKFold
 
-from heart_failure.config.config import (
-    SEX,
-    AGE,
-    MAX_HR,
-    OLDPEAK,
-    ST_SLOPE,
-    CHEST_PAIN_TYPE,
-    RESTING_ECG,
-)
+from heart_failure.config.config import AGE, MAX_HR
 from heart_failure.config.features import (
     TE_FEATURES,
-    QBINNED_FEATURES,
     BINARY_CAT_FEATURES,
-    MAX_HR_TE_FEATURES,
     CONJ_RULES,
     CONJ_MIN_MASK_COUNT,
     CONJ_MIN_TARGET_RATE,
-    SEX_TE_FEATURES,
     CONJUNCTIVE_RULES,
-    TE_CV,
-    RANDOM_STATE,
-    ST_TE_FEATURES,
-    SEX_CAT_TE,
     F_BINS,
-    RECG_CAT_TE,
+    TE_FEATURE_CONFIG,
 )
+from heart_failure.config.train import TE_CV, RANDOM_STATE
 
 
-class TEByBins(BaseEstimator, TransformerMixin):
+class CrossTargetEncoder(TransformerMixin, BaseEstimator):
     def __init__(
         self,
-        binning_cols: list[str],
-        cat_cols: list[str],
-        n_bins: list[int] | int = 5,
+        features: list[str],
+        bins: dict[str, int] = None,
+        merge_rules: dict[str, str] = None,
         cv=None,
     ):
-        self.binning_cols = binning_cols
-        self.cat_cols = cat_cols
-        self.n_bins = n_bins
+        self.features = features
+        self.bins = bins
+        self.merge_rules = merge_rules
         self.cv = cv
 
     def _encode(self, X: pd.DataFrame, y=None, fit=False):
         X = X.copy()
-        if isinstance(self.n_bins, int):
-            self.n_bins = [self.n_bins] * len(self.binning_cols)
 
-        bin_labels = []
-        for bin_col, n_bins in zip(self.binning_cols, self.n_bins):
-            if fit:
-                binner = KBinsDiscretizer(n_bins, encode="ordinal")
-                bins = binner.fit_transform(X[[bin_col]]).ravel().astype(int)
-                self.binners_[bin_col] = binner
-            else:
-                binner = self.binners_[bin_col]
-                bins = binner.transform(X[[bin_col]]).ravel().astype(int)
+        if fit and self.bins:
+            for col, n_bins in self.bins.items():
+                binner = KBinsDiscretizer(n_bins=n_bins, encode="ordinal")
+                binner.fit(X[[col]])
+                self.binners_[col] = binner
 
-            bin_labels += [pd.Series(bins, index=X.index).astype(str)]
+        cross = self._make_cross(X)
 
-        for cat_col in self.cat_cols:
-            df = pd.concat([X[cat_col].astype(str)] + bin_labels, axis=1)
-            cross = df.agg("__".join, axis=1)
+        if fit:
+            self.encoder_ = TargetEncoder(cv=self.cv)
+            encoded = self.encoder_.fit_transform(cross.to_frame("cross"), y)
+        else:
+            encoded = self.encoder_.transform(cross.to_frame("cross"))
 
-            encoder = self.encoders_[cat_col]
-            if fit:
-                encoded = encoder.fit_transform(cross.to_frame("cross"), y)
-            else:
-                encoded = encoder.transform(cross.to_frame("cross"))
-
-            X[f"{"_".join(self.binning_cols)}_{cat_col}_te"] = encoded.ravel()
-
+        name = "_".join(self.features) + "_te"
+        X[name] = encoded.ravel()
         return X
-
-    def _init_encoders(self):
-        return {cat_col: TargetEncoder(cv=self.cv) for cat_col in self.cat_cols}
 
     def fit(self, X: pd.DataFrame, y):
         self.binners_ = {}
-        self.encoders_ = self._init_encoders()
-
         self._encode(X, y=y, fit=True)
         return self
 
@@ -94,49 +65,33 @@ class TEByBins(BaseEstimator, TransformerMixin):
 
     def fit_transform(self, X: pd.DataFrame, y):
         self.binners_ = {}
-        self.encoders_ = self._init_encoders()
+        return self._encode(X, y, fit=True)
 
-        return self._encode(X, y=y, fit=True)
+    def _make_cross(self, X: pd.DataFrame):
+        parts = []
 
-
-class CrossTargetEncoder(BaseEstimator, TransformerMixin):
-    def __init__(self, cat_cols_groups: tuple[list[str], list[str]], cv=None):
-        self.cat_cols_groups = cat_cols_groups
-        self.cv = cv
-
-    def _encode(self, X: pd.DataFrame, y=None, fit=False):
-        X = X.copy()
-
-        for left_col, right_col in product(*self.cat_cols_groups):
-            cross = X[left_col].astype(str) + "__" + X[right_col].astype(str)
-
-            encoder = self.encoders_[(left_col, right_col)]
-            if fit:
-                encoded = encoder.fit_transform(cross.to_frame("cross"), y)
+        for col in self.features:
+            if col in self.binners_:
+                values = (
+                    self.binners_[col]
+                    .transform(X[[col]])
+                    .astype(int)
+                    .ravel()
+                    .astype(str)
+                )
             else:
-                encoded = encoder.transform(cross.to_frame("cross"))
+                values = X[col].astype(str).values
+            parts.append(pd.Series(values, index=X.index))
 
-            X[f"{left_col}_{right_col}_te"] = encoded.ravel()
+        cross = parts[0]
 
-        return X
+        for part in parts[1:]:
+            cross = cross + "__" + part
 
-    def _init_encoders(self):
-        return {
-            (left_col, right_col): TargetEncoder(cv=self.cv)
-            for left_col, right_col in product(*self.cat_cols_groups)
-        }
+        if self.merge_rules:
+            cross = cross.replace(self.merge_rules)
 
-    def fit(self, X: pd.DataFrame, y):
-        self.encoders_ = self._init_encoders()
-        self._encode(X, y=y, fit=True)
-        return self
-
-    def transform(self, X: pd.DataFrame):
-        return self._encode(X, fit=False)
-
-    def fit_transform(self, X: pd.DataFrame, y):
-        self.encoders_ = self._init_encoders()
-        return self._encode(X, y=y, fit=True)
+        return cross
 
 
 class ConjRuleFeature(BaseEstimator, TransformerMixin):
@@ -258,6 +213,24 @@ class Preprocessor(TransformerMixin, BaseEstimator):
         return self.transformer_.transform(X)
 
 
+def _build_te_features(cv):
+    steps = []
+    for config in TE_FEATURE_CONFIG:
+        steps.append(
+            (
+                config["name"],
+                CrossTargetEncoder(
+                    features=config["features"],
+                    bins=config["bins"],
+                    merge_rules=config["merge_rules"],
+                    cv=cv,
+                ),
+            )
+        )
+
+    return steps
+
+
 def get_fe_pipeline(
     cv=None,
     combine_rules=True,
@@ -278,27 +251,10 @@ def get_fe_pipeline(
 
     steps += [
         ("age_maxhr_ratio", RatioFeature(AGE, MAX_HR)),
-        ("oldpeak_cpt_te", TEByBins([OLDPEAK], [CHEST_PAIN_TYPE], n_bins=4, cv=cv)),
-        ("st_te", TEByBins(ST_TE_FEATURES, [ST_SLOPE], n_bins=[4, 3], cv=cv)),
-        ("te_by_max_hr", TEByBins([MAX_HR], MAX_HR_TE_FEATURES, n_bins=4, cv=cv)),
-        ("sex_te", TEByBins(SEX_TE_FEATURES, [SEX], n_bins=[5, 3], cv=cv)),
-        ("sex_cat_te", CrossTargetEncoder((SEX_CAT_TE, [SEX]), cv=cv)),
-        ("recg_cat_te", CrossTargetEncoder((RECG_CAT_TE, [RESTING_ECG]), cv=cv)),
-        ("oldpeak_recg_te", TEByBins([OLDPEAK], [RESTING_ECG], n_bins=4, cv=cv)),
+        *_build_te_features(cv),
         ("preprocessor", Preprocessor(cv, n_bins, use_binner, rename_features)),
     ]
 
     pipeline = Pipeline(steps)
 
     return pipeline
-
-
-def get_prep_pipeline(
-    cv=None, n_bins=8, use_binner=True, rename_features=False
-) -> Pipeline:
-    if cv is None:
-        cv = StratifiedKFold(n_splits=TE_CV, shuffle=True, random_state=RANDOM_STATE)
-
-    return Pipeline(
-        [("preprocessor", Preprocessor(cv, n_bins, use_binner, rename_features))]
-    )
